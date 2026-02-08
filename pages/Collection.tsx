@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Trash2, Power, Gamepad, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Activity, ShieldAlert, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -148,7 +147,7 @@ const Collection: React.FC = () => {
   );
 
   return (
-    <div className="w-screen min-h-[100svh] px-0 py-0 sm:max-w-7xl sm:mx-auto sm:px-4 sm:py-8 sm:py-12 flex flex-col items-center">
+    <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12 flex flex-col items-center">
       <div className="text-center mb-10">
         <h1 className="text-3xl sm:text-5xl font-black text-slate-900 mb-2 tracking-tighter uppercase italic">Control de Escuadrón</h1>
         <div className="flex items-center justify-center gap-2">
@@ -160,16 +159,17 @@ const Collection: React.FC = () => {
       </div>
 
       {/* CHASIS DE LA CONSOLA */}
-      <div className="relative bg-[#c0392b] w-screen min-h-[100svh] p-3 sm:p-14 rounded-none sm:rounded-[6rem] shadow-none sm:shadow-[0_40px_0_0_#962d22] border-r-0 sm:border-r-[10px] border-[#962d22] flex flex-col">
+      <div className="relative bg-[#c0392b] p-4 sm:p-14 rounded-[3.5rem] sm:rounded-[6rem] shadow-[0_40px_0_0_#962d22] border-r-[10px] border-[#962d22] w-full max-w-4xl">
         
         {/* PANTALLA LCD */}
-        <div className="bg-slate-300 p-2 sm:p-10 rounded-none sm:rounded-[3.5rem] border-b-0 sm:border-b-[10px] border-slate-400 shadow-inner mb-0 sm:mb-12 flex-1 min-h-0">
+        <div className="bg-slate-300 p-2 sm:p-10 rounded-[2.5rem] sm:rounded-[3.5rem] border-b-[10px] border-slate-400 shadow-inner mb-12">
           
           <div 
             className={`relative w-full rounded-2xl overflow-hidden transition-all duration-700 border-[6px] border-slate-900 flex flex-col`}
             style={{ 
-  backgroundColor: isConsoleOn ? lcdTheme.bg : '#0f172a'
-}}
+              backgroundColor: isConsoleOn ? lcdTheme.bg : '#0f172a',
+              minHeight: '520px'
+            }}
           >
             {!isConsoleOn ? (
               <div className="flex-grow flex flex-col items-center justify-center gap-4">
