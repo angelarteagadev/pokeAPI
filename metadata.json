@@ -1,0 +1,5 @@
+{
+  "name": "PokéDex Manager Pro",
+  "description": "A high-performance full-stack PokéDex application with user authentication, collection management, and AI-powered Pokémon insights.",
+  "requestFramePermissions": []
+}
