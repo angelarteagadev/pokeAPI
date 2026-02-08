@@ -4,7 +4,6 @@ import { mockBackend } from './mockBackend';
 
 const API_URL = 'http://localhost:3001/api';
 
-// Función para verificar si el servidor real está disponible
 let isServerDown = false;
 const checkServer = async () => {
   try {
@@ -26,7 +25,6 @@ const getUser = () => {
 };
 
 export const apiService = {
-  // Auth
   async login(email: string, password: string) {
     await checkServer();
     if (isServerDown) return mockBackend.login(email, password);
@@ -41,18 +39,18 @@ export const apiService = {
     return data;
   },
 
-  // Pokemon Proxy
-  async getPokemonList(limit: number, offset: number, search?: string, type?: string) {
+  async getPokemonList(limit: number, offset: number, search?: string, type?: string, gen?: string) {
     await checkServer();
-    if (isServerDown) return mockBackend.getPokemonList(limit, offset, search, type);
+    if (isServerDown) return mockBackend.getPokemonList(limit, offset, search, type, gen);
     try {
       const params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString() });
       if (search) params.append('search', search);
       if (type) params.append('type', type);
+      if (gen) params.append('gen', gen);
       const { data } = await axios.get(`${API_URL}/pokemon?${params.toString()}`);
       return data;
     } catch (e) {
-      return mockBackend.getPokemonList(limit, offset, search, type);
+      return mockBackend.getPokemonList(limit, offset, search, type, gen);
     }
   },
 
@@ -66,7 +64,6 @@ export const apiService = {
     }
   },
 
-  // ... (resto de métodos igual)
   async getCollection() {
     const user = getUser();
     if (isServerDown) return mockBackend.getCollection(user?.id);
@@ -74,17 +71,17 @@ export const apiService = {
     return data;
   },
 
-  async addToCollection(pokemonId: number, pokemonName: string, note?: string) {
+  async addToCollection(pokemonId: number, pokemonName: string, note?: string, team?: string) {
     const user = getUser();
-    if (isServerDown) return mockBackend.addToCollection(user?.id, pokemonId, pokemonName, note);
-    const { data } = await axios.post(`${API_URL}/collection`, { pokemonId, pokemonName, note }, { headers: getAuthHeader() });
+    if (isServerDown) return mockBackend.addToCollection(user?.id, pokemonId, pokemonName, note, team);
+    const { data } = await axios.post(`${API_URL}/collection`, { pokemonId, pokemonName, note, team }, { headers: getAuthHeader() });
     return data;
   },
 
-  async updateCollectionNote(id: number, note: string) {
+  async updateCollectionNote(id: number, note?: string, team?: string) {
     const user = getUser();
-    if (isServerDown) return mockBackend.updateNote(user?.id, id, note);
-    const { data } = await axios.put(`${API_URL}/collection/${id}`, { note }, { headers: getAuthHeader() });
+    if (isServerDown) return mockBackend.updateNote(user?.id, id, note || '', team);
+    const { data } = await axios.put(`${API_URL}/collection/${id}`, { note, team }, { headers: getAuthHeader() });
     return data;
   },
 
@@ -96,9 +93,7 @@ export const apiService = {
   },
 
   async getAiInsight(name: string, types: string[], stats: any) {
-    if (isServerDown) {
-        return `As a ${types.join('/')} type, ${name} is particularly strong in combat. Its base stats suggest a tactical focus on ${Object.keys(stats).sort((a,b) => stats[b]-stats[a])[0]}. (Simulation mode active)`;
-    }
+    if (isServerDown) return `Strategic analysis for ${name}: Given its ${types.join('/')} typing and current base stats, it functions primarily as a powerful asset for any trainer. Focus on maximizing its natural strengths during battle.`;
     const { data } = await axios.post(`${API_URL}/ai/describe`, { name, types, stats }, { headers: getAuthHeader() });
     return data.insight;
   }

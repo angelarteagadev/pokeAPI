@@ -5,6 +5,18 @@ import { PokemonDetail, PokemonSummary } from '../types';
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const STORAGE_KEYS = { USERS: 'pokedex_mock_users', COLLECTION: 'pokedex_mock_collection' };
 
+const GENERATIONS: Record<string, { start: number, end: number }> = {
+  '1': { start: 1, end: 151 },
+  '2': { start: 152, end: 251 },
+  '3': { start: 252, end: 386 },
+  '4': { start: 387, end: 493 },
+  '5': { start: 494, end: 649 },
+  '6': { start: 650, end: 721 },
+  '7': { start: 722, end: 809 },
+  '8': { start: 810, end: 905 },
+  '9': { start: 906, end: 1025 },
+};
+
 const getStored = (key: string) => {
   const data = localStorage.getItem(key);
   if (!data && key === STORAGE_KEYS.USERS) {
@@ -21,7 +33,7 @@ export const mockBackend = {
   async register(email: string, pass: string, name?: string) {
     await delay(800);
     const users = getStored(STORAGE_KEYS.USERS);
-    if (users.find((u: any) => u.email === email)) throw new Error('User already exists');
+    if (users.find((u: any) => u.email === email)) throw new Error('Usuario ya existe.');
     const newUser = { id: Date.now(), email, name: name || email.split('@')[0], password: btoa(pass) };
     users.push(newUser);
     setStored(STORAGE_KEYS.USERS, users);
@@ -32,51 +44,50 @@ export const mockBackend = {
     await delay(600);
     const users = getStored(STORAGE_KEYS.USERS);
     const user = users.find((u: any) => u.email === email && u.password === btoa(pass));
-    if (!user) throw new Error('Invalid credentials');
+    if (!user) throw new Error('Credenciales inválidas.');
     return { user: { id: user.id, email: user.email, name: user.name }, token: 'mock-jwt-' + Date.now() };
   },
 
-  async getPokemonList(limit: number, offset: number, search?: string, type?: string) {
+  async getPokemonList(limit: number, offset: number, search?: string, type?: string, gen?: string) {
     const baseUrl = 'https://pokeapi.co/api/v2';
     let results: any[] = [];
     let count = 0;
 
-    // Lógica prioritaria: Filtro por TIPO
-    if (type) {
+    if (gen && GENERATIONS[gen]) {
+      const { start, end } = GENERATIONS[gen];
+      const totalInRange = end - start + 1;
+      const { data } = await axios.get(`${baseUrl}/pokemon?limit=${totalInRange}&offset=${start - 1}`);
+      let genPokemon = data.results;
+      if (type) {
+        const typeData = (await axios.get(`${baseUrl}/type/${type}`)).data;
+        const typeNames = new Set(typeData.pokemon.map((p: any) => p.pokemon.name));
+        genPokemon = genPokemon.filter((p: any) => typeNames.has(p.name));
+      }
+      if (search) genPokemon = genPokemon.filter((p: any) => p.name.includes(search.toLowerCase()));
+      count = genPokemon.length;
+      results = genPokemon.slice(offset, offset + limit);
+    } 
+    else if (type) {
       const { data } = await axios.get(`${baseUrl}/type/${type}`);
       let typePokemon = data.pokemon.map((p: any) => p.pokemon);
-      
-      // Si también hay búsqueda, filtramos la lista de tipos
-      if (search) {
-        typePokemon = typePokemon.filter((p: any) => p.name.includes(search.toLowerCase()));
-      }
-      
+      if (search) typePokemon = typePokemon.filter((p: any) => p.name.includes(search.toLowerCase()));
       count = typePokemon.length;
       results = typePokemon.slice(offset, offset + limit);
     } 
-    // Lógica: Búsqueda por NOMBRE/ID (sin tipo)
     else if (search) {
       try {
-        // Intentamos búsqueda exacta primero
         const { data: p } = await axios.get(`${baseUrl}/pokemon/${search.toLowerCase()}`);
         count = 1;
         results = [p];
-      } catch (e) {
-        // Si no hay exacta, la PokéAPI no ayuda mucho con búsquedas parciales en /pokemon.
-        // Simulamos un comportamiento vacío o podrías traer una lista grande y filtrar.
-        return { count: 0, results: [] };
-      }
+      } catch (e) { return { count: 0, results: [] }; }
     } 
-    // Lógica: Listado normal paginado
     else {
       const { data } = await axios.get(`${baseUrl}/pokemon?limit=${limit}&offset=${offset}`);
       count = data.count;
       results = data.results;
     }
 
-    // Enriquecemos los resultados con imágenes y tipos
     const enrichedResults = await Promise.all(results.map(async (p: any) => {
-      // Si ya tenemos los datos completos (desde búsqueda exacta), los usamos
       const d = p.sprites ? p : (await axios.get(p.url)).data;
       return {
         id: d.id,
@@ -85,7 +96,6 @@ export const mockBackend = {
         types: d.types.map((t: any) => t.type.name)
       };
     }));
-
     return { count, results: enrichedResults };
   },
 
@@ -121,20 +131,34 @@ export const mockBackend = {
     }));
   },
 
-  async addToCollection(userId: number, pokemonId: number, pokemonName: string, note?: string) {
+  async addToCollection(userId: number, pokemonId: number, pokemonName: string, note?: string, team?: string) {
+    const targetTeam = team || 'Personal';
     const all = getStored(STORAGE_KEYS.COLLECTION);
-    if (all.find((i: any) => i.userId === userId && i.pokemonId === pokemonId)) throw new Error('Already in collection');
-    const newItem = { id: Date.now(), userId, pokemonId, pokemonName, note, capturedAt: new Date().toISOString() };
+    const teamItems = all.filter((i: any) => i.userId === userId && i.team === targetTeam);
+    
+    // REGLAMENTO: Máximo 6 POR EQUIPO
+    if (teamItems.length >= 6) throw new Error(`El equipo ${targetTeam} ya está lleno.`);
+    
+    if (all.find((i: any) => i.userId === userId && i.pokemonId === pokemonId)) throw new Error('Pokémon ya capturado en tu colección global.');
+    
+    const newItem = { id: Date.now(), userId, pokemonId, pokemonName, note, team: targetTeam, capturedAt: new Date().toISOString() };
     all.push(newItem);
     setStored(STORAGE_KEYS.COLLECTION, all);
     return newItem;
   },
 
-  async updateNote(userId: number, id: number, note: string) {
+  async updateNote(userId: number, id: number, note: string, team?: string) {
     const all = getStored(STORAGE_KEYS.COLLECTION);
     const item = all.find((i: any) => i.id === id && i.userId === userId);
-    if (!item) throw new Error('Not found');
-    item.note = note;
+    if (!item) throw new Error('Registro no encontrado.');
+    
+    if (team && team !== item.team) {
+      const teamCount = all.filter((i: any) => i.userId === userId && i.team === team).length;
+      if (teamCount >= 6) throw new Error(`El equipo ${team} ya tiene el máximo de 6 Pokémon.`);
+    }
+
+    if (note !== undefined) item.note = note;
+    if (team !== undefined) item.team = team;
     setStored(STORAGE_KEYS.COLLECTION, all);
     return item;
   },

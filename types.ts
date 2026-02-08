@@ -31,9 +31,9 @@ export interface CollectionItem {
   pokemonId: number;
   pokemonName: string;
   note?: string;
+  team?: string;
   capturedAt: string;
-  // Detail usually fetched separately or cached
-  details?: PokemonSummary;
+  details?: PokemonDetail;
 }
 
 export interface AuthResponse {

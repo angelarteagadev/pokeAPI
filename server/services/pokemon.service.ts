@@ -3,11 +3,45 @@ import axios from 'axios';
 
 const BASE_URL = 'https://pokeapi.co/api/v2';
 
-export const getList = async (limit: number, offset: number, search?: string, type?: string) => {
+const GENERATIONS: Record<string, { start: number, end: number }> = {
+  '1': { start: 1, end: 151 },
+  '2': { start: 152, end: 251 },
+  '3': { start: 252, end: 386 },
+  '4': { start: 387, end: 493 },
+  '5': { start: 494, end: 649 },
+  '6': { start: 650, end: 721 },
+  '7': { start: 722, end: 809 },
+  '8': { start: 810, end: 905 },
+  '9': { start: 906, end: 1025 },
+};
+
+export const getList = async (limit: number, offset: number, search?: string, type?: string, gen?: string) => {
   let results: any[] = [];
   let count = 0;
 
-  if (type) {
+  // Prioritize Generation Filter if present
+  if (gen && GENERATIONS[gen]) {
+    const { start, end } = GENERATIONS[gen];
+    // This is a bit heavy because PokeAPI doesn't allow range filtering in /pokemon easily
+    // We fetch a list of all pokemon in that range
+    const { data } = await axios.get(`${BASE_URL}/pokemon?limit=${end - start + 1}&offset=${start - 1}`);
+    let genPokemon = data.results;
+
+    if (type) {
+        // If type is also selected, we need to intersect
+        const typeData = (await axios.get(`${BASE_URL}/type/${type}`)).data;
+        const typePokemonNames = typeData.pokemon.map((p: any) => p.pokemon.name);
+        genPokemon = genPokemon.filter((p: any) => typePokemonNames.includes(p.name));
+    }
+
+    if (search) {
+      genPokemon = genPokemon.filter((p: any) => p.name.includes(search.toLowerCase()));
+    }
+
+    count = genPokemon.length;
+    results = genPokemon.slice(offset, offset + limit);
+  } 
+  else if (type) {
     const { data } = await axios.get(`${BASE_URL}/type/${type}`);
     let typePokemon = data.pokemon.map((p: any) => p.pokemon);
     if (search) {
@@ -15,7 +49,8 @@ export const getList = async (limit: number, offset: number, search?: string, ty
     }
     count = typePokemon.length;
     results = typePokemon.slice(offset, offset + limit);
-  } else if (search) {
+  } 
+  else if (search) {
      try {
        const resp = await axios.get(`${BASE_URL}/pokemon/${search.toLowerCase()}`);
        count = 1;

@@ -10,15 +10,16 @@ const addToCollectionSchema = z.object({
   pokemonId: z.number(),
   pokemonName: z.string(),
   note: z.string().optional(),
+  team: z.string().optional(),
 });
 
 const updateNoteSchema = z.object({
-  note: z.string(),
+  note: z.string().optional(),
+  team: z.string().optional(),
 });
 
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Cast to AuthRequest to access the custom user property added by authentication middleware
     const authReq = req as AuthRequest;
     const result = await collectionController.getCollection(authReq.user!.id);
     res.json(result);
@@ -42,7 +43,7 @@ router.put('/:id', authenticate, async (req: Request, res: Response, next: NextF
   try {
     const authReq = req as AuthRequest;
     const data = updateNoteSchema.parse(req.body);
-    const result = await collectionController.updateNote(authReq.user!.id, parseInt(req.params.id), data.note);
+    const result = await collectionController.updateNote(authReq.user!.id, parseInt(req.params.id), data);
     res.json(result);
   } catch (err) {
     next(err);

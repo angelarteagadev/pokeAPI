@@ -10,7 +10,8 @@ router.get('/', async (req, res, next) => {
     const offset = parseInt(req.query.offset as string) || 0;
     const search = req.query.search as string;
     const type = req.query.type as string;
-    const result = await pokeService.getList(limit, offset, search, type);
+    const gen = req.query.gen as string;
+    const result = await pokeService.getList(limit, offset, search, type, gen);
     res.json(result);
   } catch (err) {
     next(err);
